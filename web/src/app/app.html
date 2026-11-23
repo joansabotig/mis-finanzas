@@ -1,0 +1,10 @@
+@if (auth.session()) {
+  <mat-toolbar>
+    <span>Mis Finanzas</span>
+    <span class="spacer"></span>
+    <button mat-icon-button aria-label="Salir" (click)="logout()"><mat-icon>logout</mat-icon></button>
+  </mat-toolbar>
+}
+<main>
+  <router-outlet />
+</main>

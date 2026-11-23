@@ -1,0 +1,10 @@
+# Datos personales (saldos reales): nunca al repo
+supabase/seed.local.sql
+*.local.sql
+
+# Claude Code local
+.claude/settings.local.json
+
+# Varios
+.DS_Store
+Thumbs.db
