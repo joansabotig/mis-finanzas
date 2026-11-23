@@ -201,8 +201,11 @@ console.log('Movimientos por categoría:', byCat);
 // ---------------------------------------------------------------- SQL
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
 const values = rows.map(
-  (r) => `(${q(r.date)}, ${r.amount}, ${q(r.concept)}, ${q(r.category)}, ${q(r.month)}, ${r.section === 'fijo' && r.ok ? 'true' : 'false'})`,
+  (r) =>
+    `(${q(r.date)}, ${r.amount}, ${q(r.concept)}, ${q(r.category)}, ${q(r.month)}, ${r.section === 'fijo' && r.ok ? 'true' : 'false'}, ${q(norm(r.concept))})`,
 );
+const linkable = rows.filter((r) => r.section === 'fijo' && r.ok);
+console.log(`Fijos marcados "ok" (se vinculan a la plantilla si el nombre coincide): ${linkable.length}, último mes: ${linkable.filter((r) => r.month === lastMonth).map((r) => r.concept).join(', ')}`);
 
 const sql = `-- =====================================================================
 -- Importación del historial de la planilla (${rows.length} movimientos, ${report[0]?.month} a ${lastMonth}).
@@ -238,14 +241,26 @@ begin
   ) as c(name, grp, icon)
   where not exists (select 1 from public.categories x where x.user_id = u and x.name = c.name and x.kind = 'expense');
 
-  insert into public.transactions (user_id, date, type, account_id, amount, description, category_id)
+  -- Los fijos con "ok" en la planilla se vinculan al gasto fijo de la app con el mismo nombre
+  -- (sin importar mayúsculas ni tildes), así el checklist de ese mes los muestra como pagados.
+  insert into public.transactions (user_id, date, type, account_id, amount, description, category_id, recurring_id, period)
   select u, v.date::date, 'expense', acc, v.amount, v.concept,
-         (select id from public.categories c where c.user_id = u and c.name = v.category and c.kind = 'expense' limit 1)
+         (select id from public.categories c where c.user_id = u and c.name = v.category and c.kind = 'expense' limit 1),
+         ri.id,
+         case when ri.id is not null then v.period end
   from (values
     ${values.join(',\n    ')}
-  ) as v(date, amount, concept, category, period, fixed_ok);
+  ) as v(date, amount, concept, category, period, fixed_ok, match_key)
+  left join lateral (
+    select r.id from public.recurring_items r
+    where v.fixed_ok and r.user_id = u and r.kind = 'expense'
+      and lower(translate(trim(r.name), 'ÁÉÍÓÚÜáéíóúü', 'AEIOUUaeiouu')) = v.match_key
+    limit 1
+  ) ri on true;
 
-  raise notice 'Importados % movimientos', (select count(*) from public.transactions where account_id = acc);
+  raise notice 'Importados % movimientos (% fijos marcados como pagados)',
+    (select count(*) from public.transactions where account_id = acc),
+    (select count(*) from public.transactions where account_id = acc and recurring_id is not null);
 end $$;
 `;
 
