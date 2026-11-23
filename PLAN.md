@@ -162,42 +162,44 @@ create table savings_goals (
 
 ## 5. Fases de trabajo
 
-### Fase 0 — Setup (½ día)
-- [ ] `git init`, repo privado en GitHub.
-- [ ] Crear proyecto en Supabase (región São Paulo, la más cercana).
-- [ ] `ng new money --standalone --routing --style=scss` + `ng add @angular/pwa` + `ng add @angular/material`.
-- [ ] Conectar el repo a Cloudflare Pages → deploy automático.
-- [ ] **Instalar la PWA "Hola mundo" en tu Android** para validar el circuito completo desde el día 1.
+### Fase 0 — Setup ✅
+- [x] Repo en GitHub, proyecto Supabase, Angular 21 + PWA + Material, deploy en Cloudflare Pages.
 
-### Fase 1 — MVP usable (1–2 semanas a ritmo tranquilo)
-- [ ] Migraciones SQL: tablas, vista de saldos, políticas RLS.
-- [ ] Login (Google o email) + guard de rutas.
-- [ ] ABM de cuentas y categorías.
-- [ ] Carga rápida de gastos/ingresos.
-- [ ] Lista de movimientos del mes (editar/borrar).
-- [ ] Dashboard con saldos por cuenta y patrimonio total.
-- [ ] **Carga inicial**: tus cuentas con el saldo actual del Excel como `initial_balance`.
-- 🎯 *A partir de acá dejás de usar el Excel para el día a día.*
+### Fase 1 — MVP usable ✅
+- [x] Migración SQL inicial (tablas, vista de saldos, RLS), login, guard de rutas.
+- [x] ABM de cuentas y categorías, carga rápida, lista de movimientos, dashboard.
+- [x] Carga inicial de cuentas y saldos desde la planilla.
 
-### Fase 2 — Paridad con el Excel
-- [ ] Plantilla de gastos fijos + checklist mensual con "Pagar".
-- [ ] Transferencias y compra de dólares (ARS → USD con cotización).
-- [ ] Cotización automática (dolarapi) con opción de valor manual.
-- [ ] Resumen mensual: Total / Fijos / Variables / Casa / Inversión.
-- [ ] Ajuste de saldo para conciliar.
+### Fase 2 — Paridad con la planilla ✅
+- [x] Checklist mensual de gastos/ingresos fijos con "Pagar" precargado.
+- [x] Transferencias, compra de dólares (monto destino + tipo de cambio implícito), pago de tarjeta.
+- [x] Cotización automática (dolarapi: oficial/blue/MEP/tarjeta/cripto) o manual.
+- [x] Reportes por categoría, por tipo (fijo/variable/casa/inversión) y por medio de pago.
+- [x] Ajuste de saldo para conciliar con el banco.
 
-### Fase 3 — Mejor que el Excel
-- [ ] Reportes y gráficos por categoría y evolución mensual.
-- [ ] Proyección mensual + metas de ahorro.
-- [ ] Rendimiento estimado de inversiones (% mensual por cuenta).
-- [ ] **Importar historial** de la hoja Gastos (script Node que lee el .xlsx y genera los movimientos, en una cuenta "Histórico" que no afecta saldos) → para tener los reportes desde el primer mes.
+### Fase 3 — Mejor que la planilla (en curso)
+- [x] Tarjetas de crédito: cierre/vencimiento, resumen a pagar, consumos del período, deuda total.
+- [x] Compras en cuotas.
+- [x] Historial: búsqueda por texto en todos los meses + filtros por categoría y cuenta.
+- [x] Evolución de ingresos vs gastos (6 meses).
+- [x] Importador del historial de la planilla (`tools/import-excel`).
+- [x] Exportar movimientos a CSV.
+- [ ] Presupuesto mensual por categoría con aviso al pasarse.
+- [ ] Proyección mensual + metas de ahorro (la tabla `savings_goals` ya existe).
+- [ ] Rendimiento estimado de inversiones (el % mensual por cuenta ya se guarda).
+- [ ] Consumos en dólares dentro de la tarjeta (resumen en ARS + USD).
 - [ ] Backup semanal automático con GitHub Actions.
 
-### Fase 4 — Extras (opcional)
-- [ ] Modo offline: cola de movimientos en IndexedDB que se sincroniza al volver la conexión.
-- [ ] Recordatorios de vencimiento de fijos (notificaciones push).
-- [ ] Atajo "agregar gasto" desde el ícono de la app (shortcuts del manifest).
-- [ ] Empaquetar para Play Store (TWA).
+### Fase 4 — App pública
+- [x] Multiusuario: RLS por `user_id` + datos iniciales por trigger al registrarse.
+- [x] Login con Google y registro por email (detrás de flags, ver SETUP.md §8).
+- [ ] SMTP propio para los emails de registro (Resend/Brevo) y dominio propio.
+- [ ] Onboarding: asistente para crear las primeras cuentas, tarjetas y fijos.
+- [ ] Política de privacidad y términos. En Argentina, la Ley 25.326 de datos personales pide inscribir la base de datos ante la AAIP.
+- [ ] Borrar la cuenta y descargar los datos desde la app (derechos de acceso y supresión).
+- [ ] Límites del plan gratis de Supabase (500 MB, 50.000 usuarios activos/mes) → plan pago al crecer.
+- [ ] Modelo de negocio: freemium (gratis con lo básico; premium con importación de resúmenes, presupuestos, cuentas compartidas en pareja).
+- [ ] Modo offline (cola en IndexedDB), recordatorios push de vencimientos, Play Store (TWA).
 
 ---
 
@@ -210,12 +212,13 @@ App money/
 │  ├─ src/app/
 │  │  ├─ core/              # supabase client, auth, guards, servicios
 │  │  ├─ features/
-│  │  │  ├─ dashboard/
+│  │  │  ├─ home/
 │  │  │  ├─ transactions/   # lista + alta rápida
 │  │  │  ├─ recurring/      # gastos fijos del mes
 │  │  │  ├─ accounts/
 │  │  │  ├─ reports/
-│  │  │  └─ settings/
+│  │  │  ├─ categories/
+│  │  │  └─ more/           # cotización, exportar CSV, sesión
 │  │  └─ shared/            # pipes de moneda, componentes comunes
 │  ├─ ngsw-config.json
 │  └─ public/manifest.webmanifest
@@ -228,10 +231,15 @@ App money/
 
 ---
 
-## 7. Decisiones pendientes (a confirmar antes de arrancar)
+## 7. Decisiones tomadas
 
-1. **Stack**: Supabase (recomendado) o API en .NET.
-2. **Login**: con Google (más cómodo en Android) o email + contraseña.
-3. **Cotización por defecto** para el patrimonio total: oficial, blue o MEP.
-4. **Historial**: ¿importar todos los meses de la hoja Gastos, o arrancar de cero desde este mes?
-5. **Categorías iniciales**: Supermercado, Nafta, Comida y salidas, Servicios, Suscripciones, Seguros, Impuestos, Casa, Hobbies, Compras, Otros.
+1. **Stack**: Angular PWA + Supabase + Cloudflare Pages.
+2. **Login**: email + contraseña; Google listo para activar (SETUP.md §8).
+3. **Cotización**: configurable en Más → manual por defecto, o automática (oficial/blue/MEP/tarjeta/cripto).
+4. **Historial**: importador incluido; correrlo es opcional (SETUP.md §7).
+5. **Categorías**: las de la planilla, más Auto y moto, Salud y Viajes al importar.
+
+## 8. Ideas tomadas de apps similares
+
+- **Firefly III / Actual Budget** (open source): transacciones recurrentes, tarjetas como cuentas de deuda, reglas de clasificación, presupuestos → acá: fijos del mes, tarjetas con resumen, importador con reglas por palabra clave.
+- **Apps argentinas** (billeteras, bancos digitales, Spendee/Monefy): cuotas, resumen de tarjeta (pagar el total, no el mínimo), dólar en sus distintas cotizaciones, carga rápida desde el celular → acá: cuotas, "A pagar / vence", cotización automática, botón "+".
