@@ -33,6 +33,24 @@ import { MoneyPipe } from '../../shared/money.pipe';
         }
       }
 
+      @if (cards().length) {
+        <div class="section-title">Tarjetas de crédito</div>
+        <div class="rows">
+          @for (a of cards(); track a.id) {
+            <div class="row">
+              <a class="grow link" [routerLink]="['/movimientos']" [queryParams]="{ cuenta: a.id }">
+                <span class="main">{{ a.name }}</span>
+                <span class="sub">
+                  @if (a.closing_day) { Cierra el {{ a.closing_day }} · vence el {{ a.due_day }} } @else { Sin fechas configuradas }
+                </span>
+              </a>
+              <span class="amount" [class.neg]="a.balance < 0">{{ a.balance | money: a.currency }}</span>
+              <a mat-icon-button [routerLink]="['/cuentas', a.id]" aria-label="Editar tarjeta"><mat-icon>edit</mat-icon></a>
+            </div>
+          }
+        </div>
+      }
+
       @if (inactive().length) {
         <div class="section-title">Desactivadas</div>
         <div class="rows">
@@ -45,7 +63,7 @@ import { MoneyPipe } from '../../shared/money.pipe';
         </div>
       }
 
-      <button mat-stroked-button class="new" routerLink="/cuentas/nueva"><mat-icon>add</mat-icon> Nueva cuenta</button>
+      <a mat-stroked-button class="new" routerLink="/cuentas/nueva"><mat-icon>add</mat-icon> Nueva cuenta o tarjeta</a>
     </div>
   `,
   styles: `
@@ -72,8 +90,10 @@ export class AccountsList implements OnInit {
   }
 
   protected byCurrency(cur: Currency) {
-    return this.all().filter((a) => a.is_active && a.currency === cur);
+    return this.all().filter((a) => a.is_active && a.currency === cur && a.type !== 'credit_card');
   }
+
+  protected readonly cards = computed(() => this.all().filter((a) => a.is_active && a.type === 'credit_card'));
 
   protected subtotal(cur: Currency) {
     return this.byCurrency(cur)

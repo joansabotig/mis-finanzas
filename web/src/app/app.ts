@@ -31,8 +31,9 @@ export class App {
   protected readonly tabs = [
     { path: '/', icon: 'home', label: 'Inicio', exact: true },
     { path: '/movimientos', icon: 'receipt_long', label: 'Movimientos', exact: false },
-    { path: '/cuentas', icon: 'account_balance_wallet', label: 'Cuentas', exact: false },
-    { path: '/categorias', icon: 'category', label: 'Categorías', exact: false },
+    { path: '/fijos', icon: 'event_repeat', label: 'Fijos', exact: false },
+    { path: '/reportes', icon: 'bar_chart', label: 'Reportes', exact: false },
+    { path: '/mas', icon: 'menu', label: 'Más', exact: false },
   ];
 
   constructor() {
@@ -62,10 +63,5 @@ export class App {
     // Desde la lista filtrada por una cuenta, el movimiento nuevo arranca con esa cuenta.
     const cuenta = this.router.routerState.snapshot.root.queryParamMap.get('cuenta');
     this.router.navigate(['/movimientos/nuevo'], { queryParams: cuenta ? { cuenta } : {} });
-  }
-
-  protected async logout() {
-    await this.auth.signOut();
-    this.router.navigateByUrl('/login');
   }
 }

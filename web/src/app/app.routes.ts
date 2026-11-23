@@ -1,13 +1,17 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
 
-/** data.title = título del toolbar; data.back = a dónde vuelve la flecha (si no hay, es una pestaña principal). */
+/**
+ * data.title = título del toolbar; data.back = a dónde vuelve la flecha
+ * (sin back = pestaña principal con barra inferior); data.fab = muestra el botón "+".
+ */
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login').then((m) => m.Login) },
   {
     path: '',
     canActivate: [authGuard],
     children: [
+      // ---- Pestañas ----
       {
         path: '',
         loadComponent: () => import('./features/home/home').then((m) => m.Home),
@@ -19,6 +23,23 @@ export const routes: Routes = [
         data: { title: 'Movimientos', fab: true },
       },
       {
+        path: 'fijos',
+        loadComponent: () => import('./features/recurring/recurring-list').then((m) => m.RecurringList),
+        data: { title: 'Fijos del mes', fab: true },
+      },
+      {
+        path: 'reportes',
+        loadComponent: () => import('./features/reports/reports').then((m) => m.Reports),
+        data: { title: 'Reportes' },
+      },
+      {
+        path: 'mas',
+        loadComponent: () => import('./features/more/more').then((m) => m.More),
+        data: { title: 'Más' },
+      },
+
+      // ---- Pantallas internas ----
+      {
         path: 'movimientos/nuevo',
         loadComponent: () => import('./features/transactions/transaction-form').then((m) => m.TransactionForm),
         data: { title: 'Nuevo movimiento', back: '/movimientos' },
@@ -29,9 +50,19 @@ export const routes: Routes = [
         data: { title: 'Editar movimiento', back: '/movimientos' },
       },
       {
+        path: 'fijos/nuevo',
+        loadComponent: () => import('./features/recurring/recurring-form').then((m) => m.RecurringForm),
+        data: { title: 'Nuevo fijo', back: '/fijos' },
+      },
+      {
+        path: 'fijos/:id',
+        loadComponent: () => import('./features/recurring/recurring-form').then((m) => m.RecurringForm),
+        data: { title: 'Editar fijo', back: '/fijos' },
+      },
+      {
         path: 'cuentas',
         loadComponent: () => import('./features/accounts/accounts-list').then((m) => m.AccountsList),
-        data: { title: 'Cuentas', fab: true },
+        data: { title: 'Cuentas y tarjetas', back: '/mas' },
       },
       {
         path: 'cuentas/nueva',
@@ -46,7 +77,7 @@ export const routes: Routes = [
       {
         path: 'categorias',
         loadComponent: () => import('./features/categories/categories-list').then((m) => m.CategoriesList),
-        data: { title: 'Categorías' },
+        data: { title: 'Categorías', back: '/mas' },
       },
       {
         path: 'categorias/nueva',

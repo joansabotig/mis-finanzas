@@ -1,16 +1,20 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { CardInfo, CardsService } from '../../core/cards.service';
 import { DataService } from '../../core/data.service';
-import { AccountBalance, Currency, TransactionRow } from '../../core/models';
+import { AccountBalance, Currency, RATE_SOURCES, RecurringItem, TransactionRow } from '../../core/models';
+import { CurrentRate, RateService } from '../../core/rate.service';
 import { currentMonth, monthLabel } from '../../core/util/dates';
+import { CardSummaryView } from '../../shared/card-summary';
 import { MoneyPipe } from '../../shared/money.pipe';
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, MoneyPipe, MatCardModule, MatIconModule, MatProgressBarModule],
+  imports: [RouterLink, MoneyPipe, CardSummaryView, MatButtonModule, MatCardModule, MatIconModule, MatProgressBarModule],
   template: `
     @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
     <div class="page">
@@ -20,7 +24,9 @@ import { MoneyPipe } from '../../shared/money.pipe';
         <mat-card-content>
           <div class="label">Patrimonio total</div>
           <div class="big">{{ totalArs() | money: 'ARS' }}</div>
-          <div class="muted">{{ totalArs() / rate() | money: 'USD' }} · dólar a {{ rate() | money: 'ARS' }}</div>
+          <a class="muted rate" routerLink="/mas">
+            {{ totalArs() / rate().rate | money: 'USD' }} · {{ rateLabel() }} {{ rate().rate | money: 'ARS' }}
+          </a>
         </mat-card-content>
       </mat-card>
 
@@ -33,10 +39,30 @@ import { MoneyPipe } from '../../shared/money.pipe';
               <div><span class="muted">Gastos</span><b class="neg">{{ expense() | money: 'ARS' }}</b></div>
               <div><span class="muted">Queda</span><b [class.neg]="income() - expense() < 0">{{ income() - expense() | money: 'ARS' }}</b></div>
             </div>
-            @if (hasUsd()) { <div class="muted note">Incluye movimientos en USD convertidos a {{ rate() | money: 'ARS' }}.</div> }
+            @if (hasUsd()) { <div class="muted note">Incluye movimientos en USD convertidos a {{ rate().rate | money: 'ARS' }}.</div> }
           </mat-card-content>
         </mat-card>
       </a>
+
+      @if (pendingFixed().length) {
+        <a class="card-link" routerLink="/fijos">
+          <mat-card appearance="outlined" class="card fixed">
+            <mat-card-content>
+              <mat-icon>event_repeat</mat-icon>
+              <span class="grow">
+                <b>{{ pendingFixed().length }} {{ pendingFixed().length === 1 ? 'gasto fijo pendiente' : 'gastos fijos pendientes' }}</b>
+                <span class="muted small">{{ pendingNames() }}</span>
+              </span>
+              <b class="neg">{{ pendingFixedTotal() | money: 'ARS' }}</b>
+            </mat-card-content>
+          </mat-card>
+        </a>
+      }
+
+      @if (cards().length) {
+        <div class="section-title">Tarjetas de crédito</div>
+        @for (c of cards(); track c.card.id) { <app-card-summary [info]="c" /> }
+      }
 
       @for (cur of currencies; track cur) {
         @if (byCurrency(cur).length) {
@@ -51,6 +77,11 @@ import { MoneyPipe } from '../../shared/money.pipe';
           </div>
         }
       }
+
+      @if (!loading() && !accounts().length) {
+        <p class="empty">Empezá creando tus cuentas: banco, billetera, efectivo, tarjeta…</p>
+        <a mat-flat-button class="wide" routerLink="/cuentas/nueva">Crear cuenta</a>
+      }
     </div>
   `,
   styles: `
@@ -59,23 +90,37 @@ import { MoneyPipe } from '../../shared/money.pipe';
     .label { font: var(--mat-sys-label-large); color: var(--mat-sys-on-surface-variant); }
     .month { margin-bottom: 8px; }
     .big { font: var(--mat-sys-headline-large); margin: 4px 0; }
+    .rate { text-decoration: none; }
     .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .summary div { display: flex; flex-direction: column; min-width: 0; }
-    .note { margin-top: 8px; font: var(--mat-sys-body-small); }
+    .note, .small { font: var(--mat-sys-body-small); }
+    .fixed mat-card-content { display: flex; align-items: center; gap: 12px; }
+    .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .grow .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wide { width: 100%; }
   `,
 })
 export class Home implements OnInit {
   private readonly data = inject(DataService);
+  private readonly cardsService = inject(CardsService);
+  private readonly rates = inject(RateService);
   protected readonly currencies: Currency[] = ['ARS', 'USD'];
   protected readonly month = monthLabel(currentMonth());
   protected readonly accounts = signal<AccountBalance[]>([]);
+  protected readonly cards = signal<CardInfo[]>([]);
   private readonly monthTx = signal<TransactionRow[]>([]);
-  protected readonly rate = signal(1);
+  private readonly fixed = signal<RecurringItem[]>([]);
+  private readonly fixedPaid = signal<Set<string>>(new Set());
+  protected readonly rate = signal<CurrentRate>({ rate: 1, source: 'manual', date: null });
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
+  protected readonly rateLabel = computed(() =>
+    this.rate().source === 'manual' ? 'dólar a' : (RATE_SOURCES.find((s) => s.value === this.rate().source)?.label ?? 'dólar') + ' a',
+  );
+
   private toArs(amount: number, currency: Currency | undefined) {
-    return currency === 'USD' ? amount * this.rate() : amount;
+    return currency === 'USD' ? amount * this.rate().rate : amount;
   }
 
   protected readonly totalArs = computed(() =>
@@ -96,16 +141,35 @@ export class Home implements OnInit {
     this.monthTx().some((t) => (t.type === 'income' || t.type === 'expense') && t.account?.currency === 'USD'),
   );
 
+  protected readonly pendingFixed = computed(() =>
+    this.fixed().filter((f) => f.kind === 'expense' && !this.fixedPaid().has(f.id)),
+  );
+  protected readonly pendingFixedTotal = computed(() =>
+    this.pendingFixed().reduce((s, f) => s + this.toArs(f.estimated_amount ?? 0, f.currency), 0),
+  );
+  protected readonly pendingNames = computed(() =>
+    this.pendingFixed()
+      .slice(0, 4)
+      .map((f) => f.name)
+      .join(', ') + (this.pendingFixed().length > 4 ? '…' : ''),
+  );
+
   async ngOnInit() {
     try {
-      const [accounts, rate, tx] = await Promise.all([
+      const month = currentMonth();
+      const [accounts, rate, tx, fixed, paid] = await Promise.all([
         this.data.accountBalances(),
-        this.data.latestRate(),
-        this.data.transactionsOfMonth(currentMonth()),
+        this.rates.current(),
+        this.data.transactionsOfMonth(month),
+        this.data.recurringItems().catch(() => []),
+        this.data.recurringPayments(month).catch(() => []),
       ]);
       this.accounts.set(accounts);
-      if (rate) this.rate.set(rate);
+      this.rate.set(rate);
       this.monthTx.set(tx);
+      this.fixed.set(fixed);
+      this.fixedPaid.set(new Set(paid.map((p) => p.recurring_id!)));
+      this.cards.set(await this.cardsService.infos(accounts));
     } catch (e) {
       this.error.set('Error cargando datos: ' + (e as Error).message);
     } finally {
@@ -114,7 +178,7 @@ export class Home implements OnInit {
   }
 
   protected byCurrency(cur: Currency) {
-    return this.accounts().filter((a) => a.currency === cur);
+    return this.accounts().filter((a) => a.currency === cur && a.type !== 'credit_card');
   }
 
   protected subtotal(cur: Currency) {
