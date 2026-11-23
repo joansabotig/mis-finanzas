@@ -15,6 +15,7 @@ import { SupabaseService } from '../../core/supabase.service';
   imports: [FormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
     <mat-card class="login" appearance="outlined">
+      <img class="logo" src="logo.svg" alt="" width="72" height="72" />
       <mat-card-header>
         <mat-card-title>Mis Finanzas</mat-card-title>
         <mat-card-subtitle>{{ mode() === 'signup' ? 'Creá tu cuenta gratis' : 'Tus cuentas, gastos y tarjetas en un solo lugar' }}</mat-card-subtitle>
@@ -63,6 +64,8 @@ import { SupabaseService } from '../../core/supabase.service';
   `,
   styles: `
     .login { max-width: 380px; margin: 12vh auto 0; width: calc(100% - 32px); box-sizing: border-box; }
+    .logo { display: block; margin: 20px auto 0; border-radius: 18px; }
+    mat-card-header { justify-content: center; text-align: center; }
     form { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
     .google { width: 100%; margin-top: 16px; }
     .google svg { margin-right: 8px; vertical-align: middle; }

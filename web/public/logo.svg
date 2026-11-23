@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Mis Finanzas: moneda con $ y flecha de crecimiento. Todo el contenido dentro de la zona segura de íconos "maskable". -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a7fe0" />
+      <stop offset="1" stop-color="#004a9e" />
+    </linearGradient>
+    <linearGradient id="coin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#dbe9fb" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)" />
+  <circle cx="236" cy="236" r="132" fill="url(#coin)" />
+  <circle cx="236" cy="236" r="108" fill="none" stroke="#005cbb" stroke-opacity="0.18" stroke-width="10" />
+  <text x="236" y="236" dy="0.35em" text-anchor="middle" font-family="Segoe UI, Roboto, Arial, sans-serif" font-weight="700" font-size="170" fill="#005cbb">$</text>
+  <circle cx="352" cy="352" r="64" fill="#1fae5b" stroke="#ffffff" stroke-width="10" />
+  <path d="M322 382 L382 322 M346 322 H382 V358" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
