@@ -95,7 +95,7 @@ const INSTALLMENT_OPTIONS = [1, 2, 3, 6, 9, 12, 18, 24];
           </mat-form-field>
         }
       } @else {
-        @if (isCard() && type() === 'expense' && !id()) {
+        @if (isCard() && type() === 'expense' && !id() && !recurringName()) {
           <div class="field-label">Cuotas</div>
           <mat-chip-listbox aria-label="Cuotas" [value]="installments()" (change)="installments.set($event.value ?? 1)">
             @for (n of installmentOptions; track n) {
