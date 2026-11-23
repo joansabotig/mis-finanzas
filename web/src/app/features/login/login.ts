@@ -34,7 +34,7 @@ import { SupabaseService } from '../../core/supabase.service';
     </mat-card>
   `,
   styles: `
-    .login { max-width: 380px; margin: 15vh auto 0; }
+    .login { max-width: 380px; margin: 15vh auto 0; width: calc(100% - 32px); box-sizing: border-box; }
     form { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; }
     .error { color: var(--mat-sys-error); }
   `,

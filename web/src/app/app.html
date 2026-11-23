@@ -1,10 +1,30 @@
 @if (auth.session()) {
   <mat-toolbar>
-    <span>Mis Finanzas</span>
+    @if (route().back) {
+      <button mat-icon-button aria-label="Volver" (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    }
+    <span class="title">{{ route().title }}</span>
     <span class="spacer"></span>
-    <button mat-icon-button aria-label="Salir" (click)="logout()"><mat-icon>logout</mat-icon></button>
+    @if (!route().back) {
+      <button mat-icon-button aria-label="Salir" (click)="logout()"><mat-icon>logout</mat-icon></button>
+    }
   </mat-toolbar>
 }
-<main>
+
+<main [class.with-nav]="auth.session() && !route().back">
   <router-outlet />
 </main>
+
+@if (auth.session() && !route().back) {
+  @if (route().fab) {
+    <button mat-fab class="fab" aria-label="Agregar movimiento" (click)="add()"><mat-icon>add</mat-icon></button>
+  }
+  <nav class="bottom-nav">
+    @for (t of tabs; track t.path) {
+      <a [routerLink]="t.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: t.exact }">
+        <mat-icon>{{ t.icon }}</mat-icon>
+        <span>{{ t.label }}</span>
+      </a>
+    }
+  </nav>
+}
