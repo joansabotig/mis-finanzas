@@ -113,6 +113,15 @@ Qué quedó configurado (por si hay que rehacerlo o cambiar de dominio):
 
 > Para lanzarlo en serio: un dominio propio (ej. `misfinanzas.com.ar`) mejora la entrega de emails (hoy salen "desde un Gmail" y pueden caer en spam) y se ve más profesional en la pantalla de Google. Al cambiar de dominio hay que actualizar las URLs de arriba en Google y en Supabase.
 
+## 9. Seguridad (configurado el 26/11/2026)
+
+- **Migración 4** ([supabase/migrations/20261126000000_seguridad.sql](supabase/migrations/20261126000000_seguridad.sql)): valida que cuentas, categorías y fijos de cada movimiento sean del mismo usuario; exige sesión con verificación en dos pasos (aal2) a quien la tenga activada; funciones `delete_my_account()` y `restore_my_data()`.
+- **Verificación en dos pasos (TOTP)**: el usuario la activa en *Más → Seguridad y datos*. Supabase la trae habilitada por defecto (*Authentication → Multifactor*). Si alguien pierde el celular: Supabase → *Authentication → Users* → el usuario → borrar su factor MFA.
+- **Captcha**: Cloudflare Turnstile, widget "Mis Finanzas" (hostnames `mis-finanzas-a8l.pages.dev` y `localhost`). La *site key* está en `environment.ts`; la *secret key* va en Supabase → *Authentication → Attack Protection* (proveedor "Turnstile de Cloudflare"). Si se cambia de dominio, agregarlo al widget.
+- **Cabeceras de seguridad**: [web/public/_headers](web/public/_headers) (CSP, HSTS, X-Frame-Options, etc.). Si la app empieza a usar otro servicio externo, hay que sumarlo a la CSP o el navegador lo bloquea.
+- **Backup**: *Más → Seguridad y datos → Descargar backup* (JSON). Restaurar reemplaza todos los datos en una sola transacción.
+- **Pendiente tuyo**: verificación en dos pasos en tus cuentas de Supabase, GitHub, Google, Cloudflare y Brevo.
+
 ## Notas
 
 - **Supabase pausa proyectos gratis tras 7 días sin uso.** Si pasa, se reactiva desde el panel con un clic.
