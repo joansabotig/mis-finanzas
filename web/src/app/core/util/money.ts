@@ -17,6 +17,16 @@ export function parseAmount(raw: string | null | undefined): number | null {
   return Math.round(Number(s) * 100) / 100;
 }
 
+/**
+ * Valida el monto de un movimiento. Los pagos de gastos fijos pueden ser $0
+ * (ej. una suscripción bonificada que igual se marca como pagada); el resto debe ser > 0.
+ */
+export function amountError(amount: number | null, allowZero = false): string | null {
+  if (amount === null || amount < 0) return allowZero ? 'Ingresá un monto (puede ser 0).' : 'Ingresá un monto mayor a 0.';
+  if (amount === 0 && !allowZero) return 'Ingresá un monto mayor a 0.';
+  return null;
+}
+
 const formatters = new Map<string, Intl.NumberFormat>();
 
 /** "$ 1.500" / "US$ 1.500" / "$ 1.500,50" — decimales solo si hacen falta. */

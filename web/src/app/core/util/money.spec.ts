@@ -1,4 +1,4 @@
-import { amountToInput, formatMoney, parseAmount } from './money';
+import { amountError, amountToInput, formatMoney, parseAmount } from './money';
 
 describe('parseAmount', () => {
   it.each([
@@ -39,6 +39,22 @@ describe('formatMoney', () => {
 
   it('formatea negativos', () => {
     expect(clean(formatMoney(-2500000, 'ARS'))).toBe('-$ 2.500.000');
+  });
+});
+
+describe('amountError', () => {
+  it('un gasto común exige monto mayor a 0', () => {
+    expect(amountError(0)).toContain('mayor a 0');
+    expect(amountError(null)).toContain('mayor a 0');
+    expect(amountError(-5)).toContain('mayor a 0');
+    expect(amountError(1500)).toBeNull();
+  });
+
+  it('el pago de un gasto fijo puede ser $0, pero no negativo ni vacío', () => {
+    expect(amountError(0, true)).toBeNull();
+    expect(amountError(7000, true)).toBeNull();
+    expect(amountError(null, true)).toContain('puede ser 0');
+    expect(amountError(-1, true)).toContain('puede ser 0');
   });
 });
 

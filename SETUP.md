@@ -74,6 +74,10 @@ Necesaria para tarjetas de crédito, compras en cuotas, la cotización automáti
 
 Sin esta migración la app funciona igual, pero no deja crear tarjetas ni cargar cuotas, y la cotización queda en manual.
 
+### 6.b Migración 3: gastos fijos en $0
+
+Permite marcar como pagado un gasto fijo con monto $0 (por ejemplo, una suscripción bonificada). Los movimientos comunes siguen exigiendo monto mayor a 0. Pegá [supabase/migrations/20261125000000_fijos_en_cero.sql](supabase/migrations/20261125000000_fijos_en_cero.sql) en el SQL Editor → **Run**.
+
 ## 7. Importar el historial de la planilla (opcional)
 
 Trae todos los meses de la hoja **Gastos** (feb-2022 en adelante), clasificados por categoría, a una cuenta oculta **"Histórico (planilla)"**: no cambia ningún saldo, pero alimenta **Reportes** y la **búsqueda**.

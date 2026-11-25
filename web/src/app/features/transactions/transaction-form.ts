@@ -15,7 +15,7 @@ import { injectGoBack } from '../../core/nav';
 import { prefs } from '../../core/prefs';
 import { RateService } from '../../core/rate.service';
 import { isMonth, monthLabel, todayIso } from '../../core/util/dates';
-import { amountToInput, formatMoney, parseAmount } from '../../core/util/money';
+import { amountError, amountToInput, formatMoney, parseAmount } from '../../core/util/money';
 import { MoneyPipe } from '../../shared/money.pipe';
 
 type FormType = 'expense' | 'income' | 'transfer';
@@ -313,7 +313,9 @@ export class TransactionForm implements OnInit {
     const amount = parseAmount(this.amountText());
     const accountId = this.accountId();
     const type = this.type();
-    if (!amount || amount <= 0) return this.error.set('Ingresá un monto mayor a 0.');
+    // Pagar un gasto fijo en $0 (suscripción bonificada) es válido; un gasto común no.
+    const amountProblem = amountError(amount, !!this.recurringId() && type === 'expense');
+    if (amountProblem || amount === null) return this.error.set(amountProblem ?? 'Ingresá un monto.');
     if (!accountId) return this.error.set('Elegí una cuenta.');
     if (!this.date()) return this.error.set('Elegí una fecha.');
 
@@ -362,7 +364,11 @@ export class TransactionForm implements OnInit {
     } catch (e) {
       const msg = (e as Error).message;
       this.error.set(
-        msg.includes('installment') ? 'Para cargar cuotas falta aplicar la migración 2 en Supabase (ver SETUP.md).' : 'No se pudo guardar: ' + msg,
+        msg.includes('installment')
+          ? 'Para cargar cuotas falta aplicar la migración 2 en Supabase (ver SETUP.md).'
+          : msg.includes('amount_sign')
+            ? 'Para marcar fijos en $0 falta aplicar la migración 3 en Supabase (ver SETUP.md).'
+            : 'No se pudo guardar: ' + msg,
       );
     } finally {
       this.saving.set(false);
