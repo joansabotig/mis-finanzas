@@ -8,6 +8,7 @@ export class SupabaseService {
     !environment.supabaseUrl.includes('TU_PROYECTO') && !environment.supabaseAnonKey.startsWith('TU_');
 
   readonly client: SupabaseClient = createClient(environment.supabaseUrl, environment.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    // PKCE: los links de confirmación, Google y recuperación vuelven con ?code=… y la sesión se arma sola.
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
   });
 }

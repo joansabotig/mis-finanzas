@@ -6,7 +6,22 @@ import { authGuard } from './core/auth.guard';
  * (sin back = pestaña principal con barra inferior); data.fab = muestra el botón "+".
  */
 export const routes: Routes = [
+  // ---- Públicas ----
   { path: 'login', loadComponent: () => import('./features/login/login').then((m) => m.Login) },
+  {
+    path: 'registro',
+    loadComponent: () => import('./features/login/login').then((m) => m.Login),
+    data: { startMode: 'signup' },
+  },
+  {
+    path: 'restablecer',
+    loadComponent: () => import('./features/login/reset-password').then((m) => m.ResetPassword),
+  },
+  {
+    path: 'privacidad',
+    loadComponent: () => import('./features/legal/privacy').then((m) => m.Privacy),
+    data: { title: 'Privacidad', back: '/mas' },
+  },
   {
     path: '',
     canActivate: [authGuard],

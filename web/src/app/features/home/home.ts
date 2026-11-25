@@ -12,6 +12,24 @@ import { currentMonth, monthLabel } from '../../core/util/dates';
 import { CardSummaryView } from '../../shared/card-summary';
 import { MoneyPipe } from '../../shared/money.pipe';
 
+const WELCOME_KEY = 'mis-finanzas.welcome-dismissed';
+
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string) {
+  try {
+    localStorage.setItem(key, '1');
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 @Component({
   selector: 'app-home',
   imports: [RouterLink, MoneyPipe, CardSummaryView, MatButtonModule, MatCardModule, MatIconModule, MatProgressBarModule],
@@ -19,6 +37,20 @@ import { MoneyPipe } from '../../shared/money.pipe';
     @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
     <div class="page">
       @if (error()) { <p class="error">{{ error() }}</p> }
+
+      @if (showWelcome()) {
+        <mat-card appearance="outlined" class="card welcome">
+          <mat-card-content>
+            <div class="label">¡Bienvenido/a a Mis Finanzas!</div>
+            <p class="muted small">Cuatro pasos para arrancar:</p>
+            <a class="step" routerLink="/cuentas/nueva"><mat-icon>account_balance_wallet</mat-icon> Creá tus cuentas (banco, billetera, efectivo) con su saldo actual</a>
+            <a class="step" routerLink="/cuentas/nueva"><mat-icon>credit_card</mat-icon> Agregá tus tarjetas con el día de cierre y vencimiento</a>
+            <a class="step" routerLink="/fijos/nuevo"><mat-icon>event_repeat</mat-icon> Cargá tus gastos fijos (luz, internet, suscripciones…)</a>
+            <span class="step"><mat-icon>add_circle</mat-icon> Tocá <b>+</b> cada vez que gastes</span>
+            <button mat-button (click)="dismissWelcome()">Entendido</button>
+          </mat-card-content>
+        </mat-card>
+      }
 
       <mat-card appearance="outlined" class="card">
         <mat-card-content>
@@ -98,6 +130,10 @@ import { MoneyPipe } from '../../shared/money.pipe';
     .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .grow .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .wide { width: 100%; }
+    .welcome { border-color: var(--mat-sys-primary); }
+    .welcome p { margin: 4px 0 8px; }
+    .step { display: flex; align-items: center; gap: 10px; padding: 8px 0; color: inherit; text-decoration: none; font: var(--mat-sys-body-medium); }
+    .step mat-icon { color: var(--mat-sys-primary); flex: none; }
   `,
 })
 export class Home implements OnInit {
@@ -114,6 +150,23 @@ export class Home implements OnInit {
   protected readonly rate = signal<CurrentRate>({ rate: 1, source: 'manual', date: null });
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+
+  private readonly welcomeDismissed = signal(readFlag(WELCOME_KEY));
+  /** Usuario nuevo: a lo sumo la cuenta "Efectivo" inicial en cero, sin movimientos ni fijos. */
+  protected readonly showWelcome = computed(
+    () =>
+      !this.loading() &&
+      !this.welcomeDismissed() &&
+      this.accounts().length <= 1 &&
+      this.accounts().every((a) => a.balance === 0) &&
+      !this.monthTx().length &&
+      !this.fixed().length,
+  );
+
+  protected dismissWelcome() {
+    this.welcomeDismissed.set(true);
+    writeFlag(WELCOME_KEY);
+  }
 
   protected readonly rateLabel = computed(() =>
     this.rate().source === 'manual' ? 'dólar a' : (RATE_SOURCES.find((s) => s.value === this.rate().source)?.label ?? 'dólar') + ' a',

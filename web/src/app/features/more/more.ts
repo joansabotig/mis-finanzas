@@ -65,6 +65,7 @@ import { formatMoney, parseAmount } from '../../core/util/money';
       <div class="section-title">Cuenta</div>
       <div class="box">
         <p class="muted small">{{ email() }}</p>
+        <a mat-button routerLink="/privacidad"><mat-icon>privacy_tip</mat-icon> Política de privacidad</a>
         <button mat-stroked-button class="logout" (click)="logout()"><mat-icon>logout</mat-icon> Cerrar sesión</button>
       </div>
     </div>
