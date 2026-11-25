@@ -69,7 +69,8 @@ describe('Login (registro)', () => {
     type('password', 'unaClaveLarga1');
     type('password2', 'unaClaveLarga1');
     await submit();
-    expect(auth.signUp).toHaveBeenCalledWith('nuevo@ejemplo.com', 'unaClaveLarga1');
+    // Sin site key de Turnstile configurada, no se manda token de captcha.
+    expect(auth.signUp).toHaveBeenCalledWith('nuevo@ejemplo.com', 'unaClaveLarga1', undefined);
     expect(el().querySelector('.sent')?.textContent).toContain('Te enviamos un email a nuevo@ejemplo.com');
   });
 
@@ -82,7 +83,7 @@ describe('Login (registro)', () => {
     expect(el().querySelector('input[name=password]')).toBeNull();
     type('email', 'yo@ejemplo.com');
     await submit();
-    expect(auth.sendPasswordReset).toHaveBeenCalledWith('yo@ejemplo.com');
+    expect(auth.sendPasswordReset).toHaveBeenCalledWith('yo@ejemplo.com', undefined);
     expect(el().querySelector('.sent')).not.toBeNull();
   });
 });

@@ -13,6 +13,7 @@ export function friendlyAuthError(message: string): string {
   if (/rate limit|too many/i.test(message)) return 'Demasiados intentos seguidos. Esperá unos minutos y probá de nuevo.';
   if (/invalid email|unable to validate email/i.test(message)) return 'El email no es válido.';
   if (/same.*password|different from the old/i.test(message)) return 'La contraseña nueva tiene que ser distinta de la anterior.';
+  if (/captcha/i.test(message)) return 'Falló la verificación anti-bots. Esperá unos segundos y probá de nuevo.';
   return message;
 }
 
@@ -39,17 +40,17 @@ export class AuthService {
     return location.origin + path;
   }
 
-  async signIn(email: string, password: string): Promise<string | null> {
-    const { error } = await this.sb.client.auth.signInWithPassword({ email, password });
+  async signIn(email: string, password: string, captchaToken?: string): Promise<string | null> {
+    const { error } = await this.sb.client.auth.signInWithPassword({ email, password, options: { captchaToken } });
     return error ? friendlyAuthError(error.message) : null;
   }
 
   /** Devuelve null si quedó logueado, 'confirm' si hay que confirmar el email, o un mensaje de error. */
-  async signUp(email: string, password: string): Promise<string | 'confirm' | null> {
+  async signUp(email: string, password: string, captchaToken?: string): Promise<string | 'confirm' | null> {
     const { data, error } = await this.sb.client.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: this.redirect('/') },
+      options: { emailRedirectTo: this.redirect('/'), captchaToken },
     });
     if (error) return friendlyAuthError(error.message);
     // Si el email ya existía, Supabase no da error (para no revelar cuentas) pero devuelve un usuario sin identidades.
@@ -65,8 +66,54 @@ export class AuthService {
     return error ? friendlyAuthError(error.message) : null;
   }
 
-  async sendPasswordReset(email: string): Promise<string | null> {
-    const { error } = await this.sb.client.auth.resetPasswordForEmail(email, { redirectTo: this.redirect('/restablecer') });
+  async sendPasswordReset(email: string, captchaToken?: string): Promise<string | null> {
+    const { error } = await this.sb.client.auth.resetPasswordForEmail(email, {
+      redirectTo: this.redirect('/restablecer'),
+      captchaToken,
+    });
+    return error ? friendlyAuthError(error.message) : null;
+  }
+
+  // ---------- Verificación en dos pasos (TOTP: Google Authenticator, Authy, 1Password…) ----------
+
+  /** true si el usuario tiene la verificación activada pero esta sesión todavía no ingresó el código. */
+  async needsSecondFactor(): Promise<boolean> {
+    const { data } = await this.sb.client.auth.mfa.getAuthenticatorAssuranceLevel();
+    return data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2';
+  }
+
+  /** Factores TOTP ya verificados (activos). */
+  async totpFactors(): Promise<{ id: string; friendly_name?: string; created_at: string }[]> {
+    const { data, error } = await this.sb.client.auth.mfa.listFactors();
+    if (error) throw new Error(friendlyAuthError(error.message));
+    return data.totp;
+  }
+
+  /** Empieza a activar: devuelve el QR (data URI) y la clave para cargar a mano. */
+  async enrollTotp(): Promise<{ factorId: string; qr: string; secret: string }> {
+    // Si quedó un intento anterior sin terminar, se descarta.
+    const { data: list } = await this.sb.client.auth.mfa.listFactors();
+    for (const f of list?.all ?? []) {
+      if (f.factor_type === 'totp' && f.status !== 'verified') await this.sb.client.auth.mfa.unenroll({ factorId: f.id });
+    }
+    const { data, error } = await this.sb.client.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: `Mis Finanzas ${new Date().toISOString().slice(0, 10)}`,
+      issuer: 'Mis Finanzas',
+    });
+    if (error) throw new Error(friendlyAuthError(error.message));
+    return { factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret };
+  }
+
+  /** Verifica un código de 6 dígitos (para terminar de activar o al iniciar sesión). */
+  async verifyTotp(factorId: string, code: string): Promise<string | null> {
+    const { error } = await this.sb.client.auth.mfa.challengeAndVerify({ factorId, code: code.replace(/\s/g, '') });
+    if (!error) return null;
+    return /invalid|expired/i.test(error.message) ? 'El código no es válido o ya venció. Probá con el que muestra ahora la app.' : friendlyAuthError(error.message);
+  }
+
+  async disableTotp(factorId: string): Promise<string | null> {
+    const { error } = await this.sb.client.auth.mfa.unenroll({ factorId });
     return error ? friendlyAuthError(error.message) : null;
   }
 

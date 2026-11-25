@@ -7,5 +7,8 @@ export const authGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   await auth.ready;
-  return auth.session() ? true : router.createUrlTree(['/login']);
+  if (!auth.session()) return router.createUrlTree(['/login']);
+  // Con verificación en dos pasos activada, falta el código de esta sesión.
+  if (await auth.needsSecondFactor()) return router.createUrlTree(['/verificar']);
+  return true;
 };

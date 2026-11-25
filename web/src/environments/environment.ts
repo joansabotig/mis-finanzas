@@ -8,6 +8,8 @@ export const environment = {
   googleLogin: true,
   /** Permitir que cualquiera cree una cuenta (requiere habilitar sign-ups en Supabase). */
   allowSignup: true,
+  /** Site key pública de Cloudflare Turnstile (captcha). Vacía = sin captcha. */
+  turnstileSiteKey: '',
   /** Email de contacto que se muestra en la política de privacidad (vacío = no se muestra). */
   contactEmail: '',
 };

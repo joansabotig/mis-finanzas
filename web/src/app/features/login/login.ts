@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
+import { Turnstile } from '../../shared/turnstile';
 
 type Mode = 'login' | 'signup' | 'reset';
 
@@ -16,7 +17,7 @@ export const MIN_PASSWORD = 8;
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [FormsModule, RouterLink, Turnstile, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
     <mat-card class="login" appearance="outlined">
       <img class="logo" src="logo.svg" alt="" width="72" height="72" />
@@ -88,7 +89,11 @@ export const MIN_PASSWORD = 8;
 
             @if (error()) { <p class="error">{{ error() }}</p> }
 
-            <button mat-flat-button type="submit" [disabled]="loading() || !configured">{{ submitLabel() }}</button>
+            @if (turnstileSiteKey) {
+              <app-turnstile [siteKey]="turnstileSiteKey" (token)="captchaToken.set($event)" />
+            }
+
+            <button mat-flat-button type="submit" [disabled]="loading() || !configured || (!!turnstileSiteKey && !captchaToken())">{{ submitLabel() }}</button>
 
             @if (mode() === 'signup') {
               <p class="muted small terms">Al crear tu cuenta aceptás la <a routerLink="/privacidad">política de privacidad</a>.</p>
@@ -139,6 +144,9 @@ export class Login implements OnInit {
   protected readonly googleLogin = environment.googleLogin;
   protected readonly allowSignup = environment.allowSignup;
   protected readonly minPassword = MIN_PASSWORD;
+  protected readonly turnstileSiteKey = environment.turnstileSiteKey;
+  protected readonly captchaToken = signal<string | null>(null);
+  private readonly turnstile = viewChild(Turnstile);
   protected email = '';
   protected password = '';
   protected password2 = '';
@@ -196,10 +204,13 @@ export class Login implements OnInit {
     this.error.set(null);
     if (!/^\S+@\S+\.\S+$/.test(email)) return this.error.set('Escribí un email válido.');
 
+    if (this.turnstileSiteKey && !this.captchaToken()) return this.error.set('Esperá a que termine la verificación anti-bots.');
+    const captcha = this.captchaToken() ?? undefined;
+
     if (this.mode() === 'reset') {
       this.loading.set(true);
-      const err = await this.auth.sendPasswordReset(email);
-      this.loading.set(false);
+      const err = await this.auth.sendPasswordReset(email, captcha);
+      this.afterAttempt();
       if (err) this.error.set(err);
       else this.sent.set(`Si existe una cuenta con ${email}, te llega un email con el link para crear una contraseña nueva.`);
       return;
@@ -211,8 +222,8 @@ export class Login implements OnInit {
       if (this.password.length < MIN_PASSWORD) return this.error.set(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`);
       if (this.password !== this.password2) return this.error.set('Las contraseñas no coinciden.');
       this.loading.set(true);
-      const res = await this.auth.signUp(email, this.password);
-      this.loading.set(false);
+      const res = await this.auth.signUp(email, this.password, captcha);
+      this.afterAttempt();
       if (res === 'confirm') this.sent.set(`¡Listo! Te enviamos un email a ${email}. Abrí el link para activar tu cuenta.`);
       else if (res) this.error.set(res);
       else this.router.navigateByUrl('/');
@@ -220,9 +231,15 @@ export class Login implements OnInit {
     }
 
     this.loading.set(true);
-    const err = await this.auth.signIn(email, this.password);
-    this.loading.set(false);
+    const err = await this.auth.signIn(email, this.password, captcha);
+    this.afterAttempt();
     if (err) this.error.set(err);
     else this.router.navigateByUrl('/');
+  }
+
+  /** Cada token del captcha sirve una sola vez: se pide uno nuevo después de cada intento. */
+  private afterAttempt() {
+    this.loading.set(false);
+    this.turnstile()?.reset();
   }
 }

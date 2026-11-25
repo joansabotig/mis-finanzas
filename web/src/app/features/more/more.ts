@@ -90,6 +90,7 @@ export class More implements OnInit {
     { path: '/cuentas', icon: 'account_balance_wallet', label: 'Cuentas y tarjetas', sub: 'Saldos, tarjetas de crédito, ajustes' },
     { path: '/categorias', icon: 'category', label: 'Categorías', sub: 'Cómo clasificás tus gastos e ingresos' },
     { path: '/fijos', icon: 'event_repeat', label: 'Gastos e ingresos fijos', sub: 'Servicios, suscripciones, sueldo' },
+    { path: '/seguridad', icon: 'security', label: 'Seguridad y datos', sub: 'Verificación en dos pasos, backup, eliminar cuenta' },
   ];
 
   protected readonly source = signal<RateSource>('manual');

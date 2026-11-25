@@ -11,6 +11,7 @@ import {
   TransactionInput,
   TransactionRow,
 } from './models';
+import { BACKUP_TABLES, BackupFile, BackupTable } from './backup';
 import { monthRange, todayIso } from './util/dates';
 import { splitInstallments } from './util/cards';
 
@@ -193,6 +194,35 @@ export class DataService {
   async recurringPayments(period: string): Promise<TransactionRow[]> {
     const q = this.sb.from('transactions').select(TX_WITH_NAMES).eq('period', period).not('recurring_id', 'is', null);
     return unwrap((await q) as unknown as Result<TransactionRow[]>).map(toTx);
+  }
+
+  // ---------- Backup, restauración y baja ----------
+  /** Todas las filas propias de cada tabla, sin joins (para el archivo de backup). */
+  async backupTables(): Promise<{ tables: Record<BackupTable, Record<string, unknown>[]>; settings: Record<string, unknown> | null }> {
+    const pageSize = 1000;
+    const readAll = async (table: BackupTable) => {
+      const rows: Record<string, unknown>[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const page = unwrap<Record<string, unknown>[]>(
+          await this.sb.from(table).select('*').order('id').range(from, from + pageSize - 1),
+        );
+        rows.push(...page);
+        if (page.length < pageSize) return rows;
+      }
+    };
+    const entries = await Promise.all(BACKUP_TABLES.map(async (t) => [t, await readAll(t)] as const));
+    const { data: settings } = await this.sb.from('user_settings').select('*').maybeSingle();
+    return { tables: Object.fromEntries(entries) as Record<BackupTable, Record<string, unknown>[]>, settings };
+  }
+
+  /** Reemplaza todos los datos por los del backup (todo o nada, en la base). */
+  async restoreBackup(backup: BackupFile): Promise<{ accounts: number; transactions: number }> {
+    return unwrap(await this.sb.rpc('restore_my_data', { payload: backup }));
+  }
+
+  /** Borra la cuenta y todos sus datos. */
+  async deleteMyAccount(): Promise<void> {
+    unwrap(await this.sb.rpc('delete_my_account'));
   }
 
   // ---------- Cotización y preferencias ----------

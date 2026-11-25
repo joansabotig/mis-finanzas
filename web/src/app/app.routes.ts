@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/reset-password').then((m) => m.ResetPassword),
   },
   {
+    path: 'verificar',
+    loadComponent: () => import('./features/login/mfa-verify').then((m) => m.MfaVerify),
+  },
+  {
     path: 'privacidad',
     loadComponent: () => import('./features/legal/privacy').then((m) => m.Privacy),
     data: { title: 'Privacidad', back: '/mas' },
@@ -88,6 +92,11 @@ export const routes: Routes = [
         path: 'cuentas/:id',
         loadComponent: () => import('./features/accounts/account-form').then((m) => m.AccountForm),
         data: { title: 'Editar cuenta', back: '/cuentas' },
+      },
+      {
+        path: 'seguridad',
+        loadComponent: () => import('./features/security/security').then((m) => m.Security),
+        data: { title: 'Seguridad y datos', back: '/mas' },
       },
       {
         path: 'categorias',
