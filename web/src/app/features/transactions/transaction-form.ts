@@ -367,7 +367,7 @@ export class TransactionForm implements OnInit {
         msg.includes('installment')
           ? 'Para cargar cuotas falta aplicar la migración 2 en Supabase (ver SETUP.md).'
           : msg.includes('amount_sign')
-            ? 'Para marcar fijos en $0 falta aplicar la migración 3 en Supabase (ver SETUP.md).'
+            ? `Para marcar fijos en $0 falta aplicar la migración 3 en Supabase (ver SETUP.md). Detalle: ${msg}`
             : 'No se pudo guardar: ' + msg,
       );
     } finally {
