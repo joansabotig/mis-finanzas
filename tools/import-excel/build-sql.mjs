@@ -226,7 +226,8 @@ begin
     values (u, 'Histórico (planilla)', 'cash', 'ARS', false, false, 999)
     returning id into acc;
   end if;
-  delete from public.transactions where account_id = acc;
+  -- Solo se reemplazan los gastos importados: los ingresos cargados aparte (ej. sueldos) se conservan.
+  delete from public.transactions where account_id = acc and type = 'expense';
 
   -- Categorías que use la importación y todavía no existan.
   insert into public.categories (user_id, name, kind, grp, icon)
