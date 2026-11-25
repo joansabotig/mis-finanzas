@@ -88,20 +88,26 @@ Trae todos los meses de la hoja **Gastos** (feb-2022 en adelante), clasificados 
 
 > Ya generé uno con tu planilla actual, con `TU_EMAIL` como placeholder: reemplazalo por tu email antes de correrlo.
 
-## 8. Login con Google y registro de otros usuarios (para cuando sea pública)
+## 8. Registro de usuarios: email + contraseña y Google ✅ (configurado el 24/11/2026)
 
-La app ya es **multiusuario**: cada fila tiene `user_id` y las políticas RLS impiden ver datos ajenos. Al registrarse, un trigger crea la cuenta "Efectivo" y categorías básicas.
+La app es **multiusuario**: cada fila tiene `user_id` y las políticas RLS impiden ver datos ajenos. Al registrarse, un trigger crea la cuenta "Efectivo" y categorías básicas. Link para compartir: <https://mis-finanzas-a8l.pages.dev/registro>.
 
-**Google:**
-1. <https://console.cloud.google.com> → proyecto nuevo → **APIs y servicios → Pantalla de consentimiento de OAuth** (Externo, nombre "Mis Finanzas", tu email de soporte).
-2. **Credenciales → Crear credenciales → ID de cliente OAuth → Aplicación web**:
-   - Orígenes autorizados: `https://mis-finanzas-a8l.pages.dev` y `http://localhost:4200`
-   - URI de redirección: `https://bdidzjcfbknlbthmyptj.supabase.co/auth/v1/callback`
-3. Supabase → **Authentication → Sign In / Providers → Google**: activalo y pegá el *Client ID* y *Client Secret*.
-4. Supabase → **Authentication → URL Configuration**: *Site URL* = `https://mis-finanzas-a8l.pages.dev`; en *Redirect URLs* agregá `http://localhost:4200`.
-5. En [web/src/environments/environment.ts](web/src/environments/environment.ts): `googleLogin: true`.
+Qué quedó configurado (por si hay que rehacerlo o cambiar de dominio):
 
-**Registro abierto** (cualquiera puede crear cuenta): Supabase → Authentication → activá **Allow new users to sign up** y poné `allowSignup: true` en `environment.ts`. Antes de abrirlo al público, configurá un SMTP propio (Authentication → Emails → SMTP, ej. Resend o Brevo gratis): el de Supabase solo manda ~2 emails por hora.
+**Google Cloud** — proyecto `mis-finanzas-515802`, Google Auth Platform:
+- Marca: nombre "Mis Finanzas", página principal `https://mis-finanzas-a8l.pages.dev`, privacidad `https://mis-finanzas-a8l.pages.dev/privacidad`.
+- Público: usuarios externos, **en producción** (sin logo ni permisos sensibles no requiere verificación; subir un logo sí la pide).
+- Cliente OAuth "Mis Finanzas Web" (aplicación web): orígenes `https://mis-finanzas-a8l.pages.dev` y `http://localhost:4200`; redirección `https://bdidzjcfbknlbthmyptj.supabase.co/auth/v1/callback`.
+
+**Supabase → Authentication:**
+- *Sign In / Providers*: Google habilitado con el Client ID/Secret; registro de usuarios nuevos y "Confirmar email" activados.
+- *URL Configuration*: Site URL `https://mis-finanzas-a8l.pages.dev`; Redirect URLs `https://mis-finanzas-a8l.pages.dev/**` y `http://localhost:4200/**`.
+- *Emails → SMTP*: Brevo (`smtp-relay.brevo.com`, puerto 587), remitente "Mis Finanzas". Límite de Supabase: 30 emails/hora (ajustable en *Rate Limits*); Brevo gratis: 300/día.
+- *Emails → Templates*: "Confirmar registro" y "Restablecer contraseña" en español, copias en [supabase/email-templates](supabase/email-templates).
+
+**App:** `googleLogin: true` y `allowSignup: true` en [web/src/environments/environment.ts](web/src/environments/environment.ts).
+
+> Para lanzarlo en serio: un dominio propio (ej. `misfinanzas.com.ar`) mejora la entrega de emails (hoy salen "desde un Gmail" y pueden caer en spam) y se ve más profesional en la pantalla de Google. Al cambiar de dominio hay que actualizar las URLs de arriba en Google y en Supabase.
 
 ## Notas
 
