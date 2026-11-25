@@ -1,9 +1,23 @@
-import { signal } from '@angular/core';
+import { Component, input, OnInit, output, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
+import { Turnstile } from '../../shared/turnstile';
 import { Login } from './login';
+
+/** Captcha simulado: entrega un token apenas aparece (en los tests no hay Cloudflare). */
+@Component({ selector: 'app-turnstile', template: '' })
+class FakeTurnstile implements OnInit {
+  readonly siteKey = input.required<string>();
+  readonly token = output<string | null>();
+  ngOnInit() {
+    queueMicrotask(() => this.token.emit('captcha-ok'));
+  }
+  reset() {
+    this.token.emit('captcha-ok');
+  }
+}
 
 describe('Login (registro)', () => {
   let fixture: ComponentFixture<Login>;
@@ -35,7 +49,9 @@ describe('Login (registro)', () => {
         { provide: AuthService, useValue: auth },
         { provide: SupabaseService, useValue: { isConfigured: true } },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(Login, { remove: { imports: [Turnstile] }, add: { imports: [FakeTurnstile] } })
+      .compileComponents();
     fixture = TestBed.createComponent(Login);
     fixture.componentRef.setInput('startMode', 'signup');
     fixture.detectChanges();
@@ -69,8 +85,8 @@ describe('Login (registro)', () => {
     type('password', 'unaClaveLarga1');
     type('password2', 'unaClaveLarga1');
     await submit();
-    // Sin site key de Turnstile configurada, no se manda token de captcha.
-    expect(auth.signUp).toHaveBeenCalledWith('nuevo@ejemplo.com', 'unaClaveLarga1', undefined);
+    // El token del captcha viaja a Supabase junto con el registro.
+    expect(auth.signUp).toHaveBeenCalledWith('nuevo@ejemplo.com', 'unaClaveLarga1', 'captcha-ok');
     expect(el().querySelector('.sent')?.textContent).toContain('Te enviamos un email a nuevo@ejemplo.com');
   });
 
@@ -83,7 +99,7 @@ describe('Login (registro)', () => {
     expect(el().querySelector('input[name=password]')).toBeNull();
     type('email', 'yo@ejemplo.com');
     await submit();
-    expect(auth.sendPasswordReset).toHaveBeenCalledWith('yo@ejemplo.com', undefined);
+    expect(auth.sendPasswordReset).toHaveBeenCalledWith('yo@ejemplo.com', 'captcha-ok');
     expect(el().querySelector('.sent')).not.toBeNull();
   });
 });
