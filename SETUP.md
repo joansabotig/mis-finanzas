@@ -116,6 +116,7 @@ Qué quedó configurado (por si hay que rehacerlo o cambiar de dominio):
 ## 9. Seguridad (configurado el 26/11/2026)
 
 - **Migración 4** ([supabase/migrations/20261126000000_seguridad.sql](supabase/migrations/20261126000000_seguridad.sql)): valida que cuentas, categorías y fijos de cada movimiento sean del mismo usuario; exige sesión con verificación en dos pasos (aal2) a quien la tenga activada; funciones `delete_my_account()` y `restore_my_data()`.
+- **Migración 5** ([supabase/migrations/20261127000000_mfa_politica_fix.sql](supabase/migrations/20261127000000_mfa_politica_fix.sql)): **obligatoria después de la 4**. La política de dos pasos de la 4 leía `auth.mfa_factors` sin permiso y bloqueaba todas las consultas; la 5 la reemplaza por la función `mfa_level_ok()`.
 - **Verificación en dos pasos (TOTP)**: el usuario la activa en *Más → Seguridad y datos*. Supabase la trae habilitada por defecto (*Authentication → Multifactor*). Si alguien pierde el celular: Supabase → *Authentication → Users* → el usuario → borrar su factor MFA.
 - **Captcha**: Cloudflare Turnstile, widget "Mis Finanzas" (hostnames `mis-finanzas-a8l.pages.dev` y `localhost`). La *site key* está en `environment.ts`; la *secret key* va en Supabase → *Authentication → Attack Protection* (proveedor "Turnstile de Cloudflare"). Si se cambia de dominio, agregarlo al widget.
 - **Cabeceras de seguridad**: [web/public/_headers](web/public/_headers) (CSP, HSTS, X-Frame-Options, etc.). Si la app empieza a usar otro servicio externo, hay que sumarlo a la CSP o el navegador lo bloquea.
